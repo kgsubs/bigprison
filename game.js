@@ -314,6 +314,7 @@ class CellScene extends Phaser.Scene {
 
   hitGuard() {
     if (!this.guard || this.guardFlashing) return;
+    if (this.guardState === 'PATROL') this.guardState = 'CHASE';
     this.guardHp--;
     if (this.guardHp <= 0) {
       this.killGuard();
