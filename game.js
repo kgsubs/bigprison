@@ -24,6 +24,10 @@ const COLOR_PLAYER      = 0xa0ffa0;
 const COLOR_SHIV        = 0xd4883a;
 const COLOR_FLASH       = 0xffffff;
 
+const THROW_SPEED  = 240;
+const MAX_BOUNCES  = 3;
+const SETTLE_MS    = 2000;
+
 class CellScene extends Phaser.Scene {
   constructor() {
     super({ key: 'CellScene' });
@@ -78,9 +82,15 @@ class CellScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true);
 
     // State
-    this.facing = 'down';
-    this.inventory = null;
+    this.facing      = 'down';
+    this.inventory   = null;
     this.flashActive = false;
+
+    // Thrown item state
+    this.thrownItem     = null;
+    this.throwCollider  = null;
+    this.settleTimer    = null;
+    this.bounceCount    = 0;
 
     // Shiv — placed at tile (3,3), centered
     const shivX = 3 * TILE + TILE / 2;
@@ -97,7 +107,7 @@ class CellScene extends Phaser.Scene {
       color: '#ffffff',
     }).setScrollFactor(0).setDepth(10);
 
-    // Input
+    // Input — WASD + Space
     this.keys = this.input.keyboard.addKeys({
       up:    Phaser.Input.Keyboard.KeyCodes.W,
       down:  Phaser.Input.Keyboard.KeyCodes.S,
@@ -105,8 +115,16 @@ class CellScene extends Phaser.Scene {
       right: Phaser.Input.Keyboard.KeyCodes.D,
       space: Phaser.Input.Keyboard.KeyCodes.SPACE,
     });
+
+    // Right Shift — must use event.code; both shifts share keyCode 16
+    this.input.keyboard.on('keydown', (event) => {
+      if (event.code === 'ShiftRight') {
+        this.throwItem();
+      }
+    });
   }
 
+  // --- Pickup (floor shiv) ---
   pickupShiv() {
     this.inventory = 'shiv';
     this.shiv.destroy();
@@ -114,21 +132,81 @@ class CellScene extends Phaser.Scene {
     this.hudText.setText('SHIV');
   }
 
+  // --- Pickup (settled thrown shiv) ---
+  pickupThrown() {
+    if (!this.thrownItem) return;
+    this.inventory = 'shiv';
+    this.hudText.setText('SHIV');
+    this.thrownItem.destroy();
+    this.thrownItem = null;
+  }
+
+  // --- Throw ---
+  throwItem() {
+    if (this.inventory !== 'shiv') return;
+    if (this.thrownItem) return; // already one in flight
+
+    this.inventory = null;
+    this.hudText.setText('');
+
+    const dirVel = {
+      up:    { vx:  0,           vy: -THROW_SPEED },
+      down:  { vx:  0,           vy:  THROW_SPEED },
+      left:  { vx: -THROW_SPEED, vy:  0           },
+      right: { vx:  THROW_SPEED, vy:  0           },
+    };
+    const { vx, vy } = dirVel[this.facing];
+
+    this.thrownItem = this.add.rectangle(this.player.x, this.player.y, 8, 16, COLOR_SHIV).setDepth(3);
+    this.physics.add.existing(this.thrownItem);
+    this.thrownItem.body.setBounce(1, 1);
+    this.thrownItem.body.setCollideWorldBounds(true);
+    this.thrownItem.body.setVelocity(vx, vy);
+
+    this.bounceCount = 0;
+
+    this.throwCollider = this.physics.add.collider(this.thrownItem, this.walls, () => {
+      this.bounceCount++;
+      if (this.bounceCount >= MAX_BOUNCES) {
+        this.settleThrown();
+      }
+    });
+
+    // Fallback: settle after SETTLE_MS regardless of bounce count
+    this.settleTimer = this.time.delayedCall(SETTLE_MS, () => {
+      this.settleThrown();
+    });
+  }
+
+  // --- Settle thrown item ---
+  settleThrown() {
+    if (!this.thrownItem) return;
+
+    // Cancel timer and collider
+    if (this.settleTimer) { this.settleTimer.remove(false); this.settleTimer = null; }
+    if (this.throwCollider) { this.throwCollider.destroy(); this.throwCollider = null; }
+
+    this.thrownItem.body.setVelocity(0);
+    this.thrownItem.body.setImmovable(true);
+
+    // Enable re-pickup
+    this.physics.add.overlap(this.player, this.thrownItem, this.pickupThrown, null, this);
+  }
+
+  // --- Attack flash ---
   spawnFlash() {
     if (this.inventory !== 'shiv' || this.flashActive) return;
 
     const offsets = {
-      up:    { dx:  0, dy: -TILE },
-      down:  { dx:  0, dy:  TILE },
-      left:  { dx: -TILE, dy: 0 },
-      right: { dx:  TILE, dy: 0 },
+      up:    { dx:  0,     dy: -TILE },
+      down:  { dx:  0,     dy:  TILE },
+      left:  { dx: -TILE,  dy:  0   },
+      right: { dx:  TILE,  dy:  0   },
     };
     const { dx, dy } = offsets[this.facing];
-    const fx = this.player.x + dx;
-    const fy = this.player.y + dy;
 
     this.flashActive = true;
-    const flash = this.add.rectangle(fx, fy, 16, 16, COLOR_FLASH).setDepth(5);
+    const flash = this.add.rectangle(this.player.x + dx, this.player.y + dy, 16, 16, COLOR_FLASH).setDepth(5);
     this.time.delayedCall(150, () => {
       flash.destroy();
       this.flashActive = false;
@@ -164,12 +242,10 @@ class CellScene extends Phaser.Scene {
       if (!movingX) this.facing = 'down';
     }
 
-    // Normalize diagonal speed
     if (movingX && movingY) {
       body.velocity.normalize().scale(speed);
     }
 
-    // Attack
     if (Phaser.Input.Keyboard.JustDown(this.keys.space)) {
       this.spawnFlash();
     }
