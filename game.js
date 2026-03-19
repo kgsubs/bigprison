@@ -24,7 +24,7 @@ const COLOR_PLAYER      = 0xa0ffa0;
 const COLOR_SHIV        = 0xd4883a;
 const COLOR_FLASH       = 0xffffff;
 
-const THROW_SPEED  = 240;
+const THROW_SPEED  = 580;
 const SETTLE_MS    = 3000;
 const SETTLE_SPEED = 12;
 
