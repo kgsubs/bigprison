@@ -10,10 +10,10 @@ const MAP = [
   [1,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,2],
   [1,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,1],
-  [1,1,1,1,2,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1],
 ];
 
 const COLOR_FLOOR        = 0x2a2a2a;
@@ -69,7 +69,7 @@ class CellScene extends Phaser.Scene {
           gfx.lineStyle(2, 0x8a6a3a, 1);
           gfx.strokeRect(x + 2, y + 2, TILE - 4, TILE - 4);
           gfx.fillStyle(0xc8a060);
-          gfx.fillRect(x + TILE - 8, y + TILE / 2 - 2, 4, 4);
+          gfx.fillRect(x + 4, y + TILE / 2 - 2, 4, 4);
           const door = this.add.rectangle(x + TILE / 2, y + TILE / 2, TILE, TILE);
           this.physics.add.existing(door, true);
           this.walls.add(door);
