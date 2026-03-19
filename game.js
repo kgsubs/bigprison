@@ -30,7 +30,7 @@ const SETTLE_SPEED        = 12;
 
 const GUARD_PATROL_SPEED  = 60;
 const GUARD_CHASE_SPEED   = 90;
-const GUARD_DETECT_RADIUS = 120;
+const GUARD_DETECT_RADIUS = 72;
 const GUARD_ATTACK_RANGE  = 24;
 const GUARD_ATTACK_MS     = 800;
 const GUARD_HP_MAX        = 3;
