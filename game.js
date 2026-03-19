@@ -88,6 +88,7 @@ class CellScene extends Phaser.Scene {
     this.guardHp       = GUARD_HP_MAX;
     this.guardState    = 'PATROL';
     this.guardFlashing = false;
+    this.guardStunned  = false;
     this.patrolPoints  = [
       { x: 7 * TILE + TILE / 2, y: 2 * TILE + TILE / 2 },
       { x: 7 * TILE + TILE / 2, y: 5 * TILE + TILE / 2 },
@@ -278,7 +279,7 @@ class CellScene extends Phaser.Scene {
   // Guard logic
   // -------------------------------------------------------
   updateGuard() {
-    if (!this.guard) return;
+    if (!this.guard || this.guardStunned) return;
 
     const dist = Phaser.Math.Distance.Between(
       this.guard.x, this.guard.y, this.player.x, this.player.y
@@ -320,11 +321,18 @@ class CellScene extends Phaser.Scene {
       this.killGuard();
       return;
     }
+    // Flash white
     this.guardFlashing = true;
     this.guard.setFillStyle(0xffffff);
     this.time.delayedCall(100, () => {
       if (this.guard) this.guard.setFillStyle(COLOR_GUARD);
       this.guardFlashing = false;
+    });
+    // Stun — stop guard briefly
+    this.guardStunned = true;
+    this.guard.body.setVelocity(0);
+    this.time.delayedCall(400, () => {
+      this.guardStunned = false;
     });
   }
 
