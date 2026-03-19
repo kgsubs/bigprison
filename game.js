@@ -82,9 +82,10 @@ class CellScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true);
 
     // State
-    this.facing      = 'down';
-    this.inventory   = null;
-    this.flashActive = false;
+    this.facing       = 'down';
+    this.inventory    = null;
+    this.attackFlash  = null;
+    this.attackFacing = null;
 
     // Thrown item state
     this.thrownItem    = null;
@@ -185,23 +186,32 @@ class CellScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.thrownItem, this.pickupThrown, null, this);
   }
 
-  // --- Attack flash ---
+  // Offset from player center to place attack weapon just outside the player body.
+  // Player is 28x28 (half=14). Shiv is 8x16.
+  // Horizontal: half-player(14) + half-shiv-width(4) + 4gap = 22
+  // Vertical:   half-player(14) + half-shiv-height(8) + 4gap = 26
+  _attackOffset(dir) {
+    switch (dir) {
+      case 'right': return { dx:  22, dy: 0, w: 8, h: 16 };
+      case 'left':  return { dx: -22, dy: 0, w: 8, h: 16 };
+      case 'down':  return { dx: 0, dy:  26, w: 8, h: 16 };
+      case 'up':    return { dx: 0, dy: -26, w: 8, h: 16 };
+    }
+  }
+
+  // --- Attack ---
   spawnFlash() {
-    if (this.inventory !== 'shiv' || this.flashActive) return;
+    if (this.inventory !== 'shiv' || this.attackFlash) return;
 
-    const offsets = {
-      up:    { dx:  0,     dy: -TILE },
-      down:  { dx:  0,     dy:  TILE },
-      left:  { dx: -TILE,  dy:  0   },
-      right: { dx:  TILE,  dy:  0   },
-    };
-    const { dx, dy } = offsets[this.facing];
+    const { dx, dy, w, h } = this._attackOffset(this.facing);
+    this.attackFacing = this.facing;
+    this.attackFlash = this.add.rectangle(
+      this.player.x + dx, this.player.y + dy, w, h, COLOR_SHIV
+    ).setDepth(5);
 
-    this.flashActive = true;
-    const flash = this.add.rectangle(this.player.x + dx, this.player.y + dy, 16, 16, COLOR_FLASH).setDepth(5);
     this.time.delayedCall(150, () => {
-      flash.destroy();
-      this.flashActive = false;
+      if (this.attackFlash) { this.attackFlash.destroy(); this.attackFlash = null; }
+      this.attackFacing = null;
     });
   }
 
@@ -240,6 +250,12 @@ class CellScene extends Phaser.Scene {
 
     if (Phaser.Input.Keyboard.JustDown(this.keys.space)) {
       this.spawnFlash();
+    }
+
+    // Keep attack weapon glued to player edge while animating
+    if (this.attackFlash && this.attackFacing) {
+      const { dx, dy } = this._attackOffset(this.attackFacing);
+      this.attackFlash.setPosition(this.player.x + dx, this.player.y + dy);
     }
 
     // Settle thrown item once it slows to a crawl
