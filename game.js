@@ -25,8 +25,8 @@ const COLOR_SHIV        = 0xd4883a;
 const COLOR_FLASH       = 0xffffff;
 
 const THROW_SPEED  = 240;
-const MAX_BOUNCES  = 3;
-const SETTLE_MS    = 2000;
+const SETTLE_MS    = 3000;
+const SETTLE_SPEED = 12;
 
 class CellScene extends Phaser.Scene {
   constructor() {
@@ -87,10 +87,9 @@ class CellScene extends Phaser.Scene {
     this.flashActive = false;
 
     // Thrown item state
-    this.thrownItem     = null;
-    this.throwCollider  = null;
-    this.settleTimer    = null;
-    this.bounceCount    = 0;
+    this.thrownItem    = null;
+    this.throwCollider = null;
+    this.settleTimer   = null;
 
     // Shiv — placed at tile (3,3), centered
     const shivX = 3 * TILE + TILE / 2;
@@ -159,18 +158,11 @@ class CellScene extends Phaser.Scene {
 
     this.thrownItem = this.add.rectangle(this.player.x, this.player.y, 8, 16, COLOR_SHIV).setDepth(3);
     this.physics.add.existing(this.thrownItem);
-    this.thrownItem.body.setBounce(1, 1);
-    this.thrownItem.body.setCollideWorldBounds(true);
+    this.thrownItem.body.setBounce(0.25, 0.25);
+    this.thrownItem.body.setDrag(200, 200);
     this.thrownItem.body.setVelocity(vx, vy);
 
-    this.bounceCount = 0;
-
-    this.throwCollider = this.physics.add.collider(this.thrownItem, this.walls, () => {
-      this.bounceCount++;
-      if (this.bounceCount >= MAX_BOUNCES) {
-        this.settleThrown();
-      }
-    });
+    this.throwCollider = this.physics.add.collider(this.thrownItem, this.walls);
 
     // Fallback: settle after SETTLE_MS regardless of bounce count
     this.settleTimer = this.time.delayedCall(SETTLE_MS, () => {
@@ -248,6 +240,11 @@ class CellScene extends Phaser.Scene {
 
     if (Phaser.Input.Keyboard.JustDown(this.keys.space)) {
       this.spawnFlash();
+    }
+
+    // Settle thrown item once it slows to a crawl
+    if (this.thrownItem && this.thrownItem.body && this.thrownItem.body.speed < SETTLE_SPEED) {
+      this.settleThrown();
     }
   }
 }
