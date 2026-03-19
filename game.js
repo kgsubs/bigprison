@@ -158,8 +158,8 @@ class CellScene extends Phaser.Scene {
 
     this.thrownItem = this.add.rectangle(this.player.x, this.player.y, 8, 16, COLOR_SHIV).setDepth(3);
     this.physics.add.existing(this.thrownItem);
-    this.thrownItem.body.setBounce(0.25, 0.25);
-    this.thrownItem.body.setDrag(200, 200);
+    this.thrownItem.body.setBounce(0.15, 0.15);
+    this.thrownItem.body.setDrag(300, 300);
     this.thrownItem.body.setVelocity(vx, vy);
 
     this.throwCollider = this.physics.add.collider(this.thrownItem, this.walls);
